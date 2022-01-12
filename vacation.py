@@ -6,6 +6,7 @@ import json
 from json import loads
 import sqlite3
 import pandas as pd
+import logging
 
 DB_FILE = 'vacation.db'
 
@@ -14,33 +15,12 @@ API_KEY = os.environ['API_KEY']
 
 this_year = datetime.today().strftime('%Y')
 
-# iter_month = '10'
-# get_timeline = 'timeline?department_id=&team_id=&date=' + '%s' % year + '%2F' + '%s&q=' % iter_month
-# print
-
-# from html.parser import HTMLParser
-#
-#
-# class MyHTMLParser(HTMLParser):
-#
-#     def handle_starttag(self, tag, attrs):
-#         print("Encountered a start tag:", tag)
-#
-#     def handle_endtag(self, tag):
-#         print("Encountered an end tag :", tag)
-#
-#     def handle_data(self, data):
-#         print("Encountered some data  :", data)
-#
-#
-# parser = MyHTMLParser()
-
 
 def vacations() -> dict:
     """берет из API отпуска за текущий год"""
     live3 = requests.Session()
     live3.params = {'api_key': API_KEY}
-    api_path = '/api/users/vacation'
+    api_path = 'api/users/vacation'
     get_vacations = live3.get(LIVE_URL + api_path)
     vacations_this_year = dict()
     if get_vacations.status_code == 200:
@@ -106,22 +86,35 @@ def get_employees() -> dict:
     return employees
 
 
-def get_name(id):
-    return name
+def get_name(func_id: int, func_employees: dict) -> str:
+    if func_id in func_employees:
+        return func_employees[func_id]
 
 
 got_vacations = vacations()
 # ищем у кого отпуск через начнется месяц
-get_data = vacations()
 search_date = (datetime.today() + pd.DateOffset(months=1)).strftime("%d-%m-%Y")
-who_go_in_vacation = list()
+who_take_vacation = dict()
 for employee in got_vacations:
+    # находим границы отпуска
+    first_day = ''
     for date in got_vacations[employee]:
-        print(date)
-        print(search_date)
-        if date.strftime("%d-%m-%Y") == search_date:
-            who_go_in_vacation.append(employee)
+        prev_day = (date - pd.DateOffset(days=1)).strftime("%d-%m-%Y")
+        # если прошлого дня нет в списке дней отпуска - значит первый день
+        if date.strftime("%d-%m-%Y") == search_date and prev_day not in got_vacations[employee]:
+            first_day = date.strftime("%d-%m-%Y")
+            continue
+        else:
+            next_day = (date + pd.DateOffset(days=1)).strftime("%d-%m-%Y")
+            if next_day not in got_vacations[employee]:
+                last_day = date.strftime("%d-%m-%Y")
+                break
+    if first_day:
+        who_take_vacation[employee] = (first_day, last_day)
+    if employee == 924:
+        pass
 
 employees = get_employees()
-
+for mate in who_take_vacation:
+    text = '{name} идет в отпуск с {search_date} по {last}'
 pass
