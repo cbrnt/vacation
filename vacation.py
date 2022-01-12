@@ -94,14 +94,19 @@ def post_to_slack(name, message_text):
 
 
 def get_employees() -> dict:
+    employees = dict()
     api_string = 'api/users/who_is_in_office'
     request_live3 = requests.Session()
     request_live3.params = {'api_key': API_KEY}
-    request_live3.post()
+    request_data = request_live3.get(LIVE_URL + api_string)
+    request_data_json = request_data.json()
+    if request_data.ok == True:
+        for empl in request_data_json:
+            employees[empl['id']] = empl['name']
     return employees
 
 
-def get_name(id) -> String:
+def get_name(id):
     return name
 
 
@@ -117,6 +122,6 @@ for employee in got_vacations:
         if date.strftime("%d-%m-%Y") == search_date:
             who_go_in_vacation.append(employee)
 
-# post_to_slack('Человек идет в отпуск: ', employee)
+employees = get_employees()
 
 pass
