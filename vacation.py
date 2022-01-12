@@ -1,6 +1,8 @@
 import os
 from datetime import datetime
 import requests
+import json
+
 from json import loads
 import sqlite3
 import pandas as pd
@@ -42,6 +44,7 @@ def vacations() -> dict:
     get_vacations = live3.get(LIVE_URL + api_path)
     vacations_this_year = dict()
     if get_vacations.status_code == 200:
+        vacations_all = json.loads(get_vacations.content)
         vacations_all = loads(get_vacations.content)
         for vacation in vacations_all:
             vacation_date = datetime.strptime(vacation['date'], '%Y-%m-%d')
@@ -75,6 +78,45 @@ class Db:
         self.dbConnect.close()
 
 
+def post_to_slack(name, message_text):
+    payload_text = {
+        'username': 'Пора в отпуск',
+        'text': '%s' % message_text,
+        'icon_emoji': ':palm_tree:'
+    }
+    hook_url = 'https://hooks.slack.com/services/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'
+    slack = requests.post(url=hook_url, data=json.dumps(payload_text))
+    if slack.status_code == 200 and slack.text == 'ok':
+        return True
+    else:
+        logging.debug('Не получилось отправить сообщение. Ошибка: %s' % slack.text)
+        return False
+
+
+def get_employees() -> dict:
+    api_string = 'api/users/who_is_in_office'
+    request_live3 = requests.Session()
+    request_live3.params = {'api_key': API_KEY}
+    request_live3.post()
+    return employees
+
+
+def get_name(id) -> String:
+    return name
+
+
+got_vacations = vacations()
+# ищем у кого отпуск через начнется месяц
 get_data = vacations()
 search_date = (datetime.today() + pd.DateOffset(months=1)).strftime("%d-%m-%Y")
+who_go_in_vacation = list()
+for employee in got_vacations:
+    for date in got_vacations[employee]:
+        print(date)
+        print(search_date)
+        if date.strftime("%d-%m-%Y") == search_date:
+            who_go_in_vacation.append(employee)
+
+# post_to_slack('Человек идет в отпуск: ', employee)
+
 pass
