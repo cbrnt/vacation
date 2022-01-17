@@ -93,28 +93,46 @@ def get_name(func_id: int, func_employees: dict) -> str:
 
 got_vacations = vacations()
 # ищем у кого отпуск через начнется месяц
-search_date = (datetime.today() + pd.DateOffset(months=1)).strftime("%d-%m-%Y")
+search_date = datetime.today() + pd.DateOffset(months=1)
+search_date_str = (datetime.today() + pd.DateOffset(months=1)).strftime("%d-%m-%Y")
 who_take_vacation = dict()
 for employee in got_vacations:
     # находим границы отпуска
     first_day = ''
+    last_day = ''
+    day_before_search = (search_date - pd.DateOffset(days=1)).strftime("%d-%m-%Y")
     for date in got_vacations[employee]:
-        prev_day = (date - pd.DateOffset(days=1)).strftime("%d-%m-%Y")
-        # если прошлого дня нет в списке дней отпуска - значит первый день
-        if date.strftime("%d-%m-%Y") == search_date and prev_day not in got_vacations[employee]:
-            first_day = date.strftime("%d-%m-%Y")
+        # если дня перед искомой датой нет в списке дней отпуска сотрудника - значит первый день отпуска
+        if date.strftime("%d-%m-%Y") == search_date_str and day_before_search not in got_vacations[employee]:
+            first_day = date
+            continue
+        # считаем дни до края отпуска
+        next_day = date + pd.DateOffset(days=1)
+        if next_day in got_vacations[employee]:
+            print('Continue')
             continue
         else:
-            next_day = (date + pd.DateOffset(days=1)).strftime("%d-%m-%Y")
-            if next_day not in got_vacations[employee]:
-                last_day = date.strftime("%d-%m-%Y")
-                break
-    if first_day:
-        who_take_vacation[employee] = (first_day, last_day)
-    if employee == 924:
-        pass
+            print('Break')
+            break
+    if date > search_date:
+        last_day = date
+    if not who_take_vacation.get(employee) and first_day and last_day:
+        who_take_vacation[employee] = list()
+    if first_day and last_day:
+        who_take_vacation[employee].append((first_day, last_day))
 
 employees = get_employees()
+who_post_to_slack = dict()
 for mate in who_take_vacation:
-    text = '{name} идет в отпуск с {search_date} по {last}'
+    dt = who_take_vacation[mate]
+    name = get_name(mate, employees)
+    start_vac = dt[0][0].strftime("%d-%m-%Y")
+    end_vac = dt[0][1].strftime("%d-%m-%Y")
+    days_diff = dt[0][1] - dt[0][0]
+    who_post_to_slack[mate] = (name, start_vac, end_vac, days_diff.days)
+
+for dude in who_post_to_slack:
+    emp = who_post_to_slack[dude]
+    message = "{name} идет в отпуск с {start} по {end} на {days} дней".format(
+        name=emp[0], start=emp[1], end=emp[2], days=emp[3])
 pass
