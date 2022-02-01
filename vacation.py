@@ -58,32 +58,17 @@ class Db:
         self.dbConnect.close()
 
 
-def post_to_slack(name, message_text):
-    payload_text = {
-        'username': 'Пора в отпуск',
-        'text': '%s' % message_text,
-        'icon_emoji': ':palm_tree:'
-    }
-    hook_url = 'https://hooks.slack.com/services/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'
-    slack = requests.post(url=hook_url, data=json.dumps(payload_text))
-    if slack.status_code == 200 and slack.text == 'ok':
-        return True
-    else:
-        logging.debug('Не получилось отправить сообщение. Ошибка: %s' % slack.text)
-        return False
-
-
 def get_employees() -> dict:
-    employees = dict()
+    employees_func = dict()
     api_string = 'api/users/who_is_in_office'
     request_live3 = requests.Session()
     request_live3.params = {'api_key': API_KEY}
     request_data = request_live3.get(LIVE_URL + api_string)
     request_data_json = request_data.json()
-    if request_data.ok == True:
+    if request_data.ok:
         for empl in request_data_json:
-            employees[empl['id']] = empl['name']
-    return employees
+            employees_func[empl['id']] = empl['name']
+    return employees_func
 
 
 def get_name(func_id: int, func_employees: dict) -> str:
@@ -93,29 +78,27 @@ def get_name(func_id: int, func_employees: dict) -> str:
 
 got_vacations = vacations()
 # ищем у кого отпуск через начнется месяц
-search_date = datetime.today() + pd.DateOffset(months=1)
+search_date = datetime.today().date() + pd.DateOffset(months=1)
 search_date_str = (datetime.today() + pd.DateOffset(months=1)).strftime("%d-%m-%Y")
 who_take_vacation = dict()
 for employee in got_vacations:
+    print('Сотрудник: ', employee)
     # находим границы отпуска
     first_day = ''
     last_day = ''
-    day_before_search = (search_date - pd.DateOffset(days=1)).strftime("%d-%m-%Y")
+    day_before_search = search_date - pd.DateOffset(days=1)
     for date in got_vacations[employee]:
         # если дня перед искомой датой нет в списке дней отпуска сотрудника - значит первый день отпуска
-        if date.strftime("%d-%m-%Y") == search_date_str and day_before_search not in got_vacations[employee]:
-            first_day = date
-            continue
-        # считаем дни до края отпуска
-        next_day = date + pd.DateOffset(days=1)
-        if next_day in got_vacations[employee]:
-            print('Continue')
-            continue
-        else:
-            print('Break')
-            break
-    if date > search_date:
-        last_day = date
+        print('Date: ', date.strftime("%d-%m-%Y"))
+        print('Search date: ', search_date_str)
+        if date.strftime("%d-%m-%Y") == search_date_str:
+            if day_before_search not in got_vacations[employee]:
+                first_day = date
+                subdate = first_day
+                while subdate in got_vacations[employee]:
+                    print('Subdate: ', subdate)
+                    subdate = subdate + pd.DateOffset(days=1)
+                last_day = subdate - pd.DateOffset(days=1)
     if not who_take_vacation.get(employee) and first_day and last_day:
         who_take_vacation[employee] = list()
     if first_day and last_day:
@@ -129,10 +112,13 @@ for mate in who_take_vacation:
     start_vac = dt[0][0].strftime("%d-%m-%Y")
     end_vac = dt[0][1].strftime("%d-%m-%Y")
     days_diff = dt[0][1] - dt[0][0]
-    who_post_to_slack[mate] = (name, start_vac, end_vac, days_diff.days)
+    # добавляю 1 день так как при подсчете разницы в днях
+    # предполгаю, что последний день не учитывеатся из-за того что не перешел границу времени 23:59
+    diff = days_diff.days + 1
+    who_post_to_slack[mate] = (name, start_vac, end_vac, diff)
 
 for dude in who_post_to_slack:
     emp = who_post_to_slack[dude]
     message = "{name} идет в отпуск с {start} по {end} на {days} дней".format(
         name=emp[0], start=emp[1], end=emp[2], days=emp[3])
-pass
+print
