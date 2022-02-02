@@ -197,7 +197,7 @@ def main():
         if not emp[0]['fired']:
             get_employee_id = to_slack.get_user_by_email(emp[0]['email'])
             employee_slack_id = get_employee_id['user']['id']
-            message = "У <@{employee_id}> приближается запланированный отпуск на {days} дней с {start} по {end}. Все в силе?".format(
+            message = "У <@{employee_id}> приближается запланированный отпуск на {days} дней с {start} по {end}".format(
                 employee_id=employee_slack_id, start=emp[1], end=emp[2], days=emp[3])
 
             result = to_slack.post_to_channel(message, 'C02LPT3GBU7', 'Пора в отпуск')
