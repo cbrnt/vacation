@@ -39,7 +39,8 @@ LIVE_URL = os.environ['LIVE_URL']
 API_KEY = os.environ['API_KEY']
 
 this_year = datetime.today().strftime('%Y')
-channel_to_post = 'test-out-hooks-1'
+
+channel_to_post = os.environ['CHANNEL']
 
 
 class Db:
